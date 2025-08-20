@@ -10,7 +10,7 @@
     <h1>Sistema de Ponto</h1>
 
     <div class="form">
-      <input type="text" id="nome" placeholder="Digite seu nome" />
+      <input type="password" id="senha" placeholder="Digite sua senha (6 dígitos)" maxlength="6" />
       <select id="tipo">
         <option value="Entrada">Entrada</option>
         <option value="Saída">Saída</option>
@@ -34,12 +34,21 @@
 
   <script>
     const registros = JSON.parse(localStorage.getItem('registros')) || [];
+    const funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
 
     function registrarPonto() {
-      const nome = document.getElementById('nome').value.trim();
+      const senha = document.getElementById('senha').value.trim();
       const tipo = document.getElementById('tipo').value;
-      if (!nome) {
-        alert('Por favor, digite seu nome.');
+
+      if (!senha || senha.length !== 6) {
+        alert('Digite sua senha de 6 dígitos.');
+        return;
+      }
+
+      const funcionario = funcionarios.find(f => f.senha === senha);
+
+      if (!funcionario) {
+        alert('Senha não encontrada. Verifique com o administrador.');
         return;
       }
 
@@ -47,19 +56,23 @@
       const data = agora.toLocaleDateString('pt-BR');
       const hora = agora.toLocaleTimeString('pt-BR');
 
-      registros.push({ nome, tipo, data, hora });
+      registros.push({ nome: funcionario.nome, tipo, data, hora });
       localStorage.setItem('registros', JSON.stringify(registros));
       atualizarTabela();
-      document.getElementById('nome').value = '';
+      document.getElementById('senha').value = '';
     }
 
     function atualizarTabela() {
       const tbody = document.querySelector('#tabela tbody');
       tbody.innerHTML = '';
-      registros.forEach(r => {
+
+      const registrosOrdenados = [...registros].reverse();
+
+      registrosOrdenados.forEach(r => {
+        const icone = r.tipo === 'Entrada' ? '🔓' : '🔒';
         const linha = `<tr>
           <td>${r.nome}</td>
-          <td>${r.tipo}</td>
+          <td>${icone} ${r.tipo}</td>
           <td>${r.data}</td>
           <td>${r.hora}</td>
         </tr>`;
