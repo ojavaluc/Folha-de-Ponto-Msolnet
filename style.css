@@ -1,25 +1,30 @@
+/* style.css */
 body {
   font-family: 'Segoe UI', sans-serif;
   background-color: #f4f4f4;
   margin: 0;
   padding: 0;
+  color: #333;
+  line-height: 1.6;
 }
 
 .container {
   max-width: 600px;
   margin: 50px auto;
-  background: white;
+  background: linear-gradient(180deg, #ffffff 0%, #f9f9f9 100%);
   padding: 30px;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   text-align: center;
   transition: all 0.3s ease;
+  border: 1px solid #e0e0e0;
 }
 
 h1 {
   margin-bottom: 20px;
   font-size: 2em;
   color: #333;
+  font-weight: 600;
 }
 
 .form {
@@ -27,6 +32,7 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  align-items: center;
 }
 
 input, select, button {
@@ -35,12 +41,17 @@ input, select, button {
   font-size: 16px;
   border: 1px solid #ccc;
   border-radius: 6px;
-  transition: border-color 0.3s ease;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 input:focus, select:focus {
   border-color: #0078D7;
   outline: none;
+  box-shadow: 0 0 0 3px rgba(0, 120, 215, 0.2);
 }
 
 button {
@@ -48,10 +59,16 @@ button {
   color: white;
   border: none;
   cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s ease, transform 0.1s ease;
 }
 
 button:hover {
   background-color: #005fa3;
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 table {
@@ -69,6 +86,20 @@ th, td {
 th {
   background-color: #f0f0f0;
   color: #333;
+}
+
+table tr:hover {
+  background-color: #f9f9f9;
+}
+
+/* Animação de entrada suave */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+tr {
+  animation: fadeIn 0.3s ease;
 }
 
 @media (max-width: 640px) {
