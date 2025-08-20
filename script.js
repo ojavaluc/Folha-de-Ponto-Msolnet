@@ -3,6 +3,7 @@ const registros = JSON.parse(localStorage.getItem('registros')) || [];
 function registrarPonto() {
   const nome = document.getElementById('nome').value.trim();
   const tipo = document.getElementById('tipo').value;
+  
   if (!nome) {
     alert('Por favor, digite seu nome.');
     return;
@@ -21,18 +22,25 @@ function registrarPonto() {
 function atualizarTabela() {
   const tbody = document.querySelector('#tabela tbody');
   tbody.innerHTML = '';
-  registros.forEach(r => {
+
+  // Mostra os registros mais recentes no topo
+  const registrosInvertidos = [...registros].reverse();
+
+  registrosInvertidos.forEach(r => {
+    const icone = r.tipo === 'Entrada' ? '🔓' : '🔒';
     const linha = `<tr>
       <td>${r.nome}</td>
-      <td>${r.tipo}</td>
+      <td>${icone} ${r.tipo}</td>
       <td>${r.data}</td>
       <td>${r.hora}</td>
     </tr>`;
     tbody.innerHTML += linha;
   });
-  function acessarAdmin() {
-  window.location.href = 'login.html';
 }
+
+// (Opcional) Redireciona para tela de login se houver botão com função
+function acessarAdmin() {
+  window.location.href = 'login.html';
 }
 
 // Carrega os dados ao abrir a página
