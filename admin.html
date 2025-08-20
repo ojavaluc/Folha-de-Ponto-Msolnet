@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registros de Ponto</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Registros de Ponto</h1>
+    <table id="tabela">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Data</th>
+          <th>Hora</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const registros = JSON.parse(localStorage.getItem('registros')) || [];
+
+    function carregarTabela() {
+      const tbody = document.querySelector('#tabela tbody');
+      tbody.innerHTML = '';
+      registros.forEach(r => {
+        const linha = `<tr>
+          <td>${r.nome}</td>
+          <td>${r.tipo}</td>
+          <td>${r.data}</td>
+          <td>${r.hora}</td>
+        </tr>`;
+        tbody.innerHTML += linha;
+      });
+    }
+
+    carregarTabela();
+  </script>
+</body>
+</html>
