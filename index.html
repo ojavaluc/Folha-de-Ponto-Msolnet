@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Sistema de Ponto</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1>Sistema de Ponto</h1>
+
+    <div class="form">
+      <input type="text" id="nome" placeholder="Digite seu nome" />
+      <select id="tipo">
+        <option value="Entrada">Entrada</option>
+        <option value="Saída">Saída</option>
+      </select>
+      <button onclick="registrarPonto()">Registrar</button>
+      <button onclick="acessarAdmin()">Área do Administrador</button>
+    </div>
+
+    <table id="tabela">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Tipo</th>
+          <th>Data</th>
+          <th>Hora</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const registros = JSON.parse(localStorage.getItem('registros')) || [];
+
+    function registrarPonto() {
+      const nome = document.getElementById('nome').value.trim();
+      const tipo = document.getElementById('tipo').value;
+      if (!nome) {
+        alert('Por favor, digite seu nome.');
+        return;
+      }
+
+      const agora = new Date();
+      const data = agora.toLocaleDateString('pt-BR');
+      const hora = agora.toLocaleTimeString('pt-BR');
+
+      registros.push({ nome, tipo, data, hora });
+      localStorage.setItem('registros', JSON.stringify(registros));
+      atualizarTabela();
+      document.getElementById('nome').value = '';
+    }
+
+    function atualizarTabela() {
+      const tbody = document.querySelector('#tabela tbody');
+      tbody.innerHTML = '';
+      registros.forEach(r => {
+        const linha = `<tr>
+          <td>${r.nome}</td>
+          <td>${r.tipo}</td>
+          <td>${r.data}</td>
+          <td>${r.hora}</td>
+        </tr>`;
+        tbody.innerHTML += linha;
+      });
+    }
+
+    function acessarAdmin() {
+      window.location.href = 'login.html';
+    }
+
+    atualizarTabela();
+  </script>
+</body>
+</html>
