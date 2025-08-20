@@ -4,11 +4,55 @@
   <meta charset="UTF-8" />
   <title>Registros de Ponto</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    .senha-toggle {
+      margin-top: -8px;
+      font-size: 0.9em;
+      text-align: left;
+      color: #555;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .senha-coluna {
+      font-family: monospace;
+      color: #888;
+    }
+
+    .registros-funcionario {
+      margin-top: 40px;
+      text-align: left;
+    }
+
+    .registros-funcionario h2 {
+      margin-bottom: 10px;
+      font-size: 1.2em;
+      color: #0078D7;
+    }
+
+    .registros-funcionario table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+
+    .registros-funcionario th,
+    .registros-funcionario td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .registros-funcionario th {
+      background-color: #f0f0f0;
+    }
+  </style>
 </head>
 <body>
   <div class="container">
     <h1>Registros de Ponto</h1>
-    <table id="tabela">
+
+    <table id="tabela-registros">
       <thead>
         <tr>
           <th>Nome</th>
@@ -19,18 +63,117 @@
       </thead>
       <tbody></tbody>
     </table>
+
+    <hr style="margin: 40px 0;" />
+
+    <h1>Gerenciar Funcionários</h1>
+
+    <div class="form">
+      <input type="text" id="nomeFuncionario" placeholder="Nome completo" />
+      <input type="text" id="funcaoFuncionario" placeholder="Função" />
+      <input type="text" id="setorFuncionario" placeholder="Setor" />
+      <input type="password" id="senhaFuncionario" placeholder="Senha (6 dígitos)" maxlength="6" />
+      <label class="senha-toggle">
+        <input type="checkbox" onclick="toggleSenhaInput()"> Mostrar senha
+      </label>
+      <button onclick="adicionarFuncionario()">Adicionar Funcionário</button>
+    </div>
+
+    <table id="tabela-funcionarios">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Função</th>
+          <th>Setor</th>
+          <th>Senha</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <div id="registrosPorFuncionario" class="registros-funcionario"></div>
   </div>
 
   <script>
     const registros = JSON.parse(localStorage.getItem('registros')) || [];
+    let funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
 
-    function carregarTabela() {
-      const tbody = document.querySelector('#tabela tbody');
+    function salvarFuncionarios() {
+      localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
+    }
+
+    function adicionarFuncionario() {
+      const nome = document.getElementById('nomeFuncionario').value.trim();
+      const funcao = document.getElementById('funcaoFuncionario').value.trim();
+      const setor = document.getElementById('setorFuncionario').value.trim();
+      const senha = document.getElementById('senhaFuncionario').value.trim();
+
+      if (!nome || !funcao || !setor || !senha) {
+        alert('Por favor, preencha todos os campos.');
+        return;
+      }
+
+      if (senha.length !== 6 || !/^\d+$/.test(senha)) {
+        alert('A senha deve conter exatamente 6 dígitos numéricos.');
+        return;
+      }
+
+      const senhaExistente = funcionarios.find(f => f.senha === senha);
+      if (senhaExistente) {
+        alert('Essa senha já está em uso por outro funcionário.');
+        return;
+      }
+
+      funcionarios.push({ nome, funcao, setor, senha });
+      salvarFuncionarios();
+      atualizarTabelaFuncionarios();
+      atualizarRegistrosPorFuncionario();
+
+      document.getElementById('nomeFuncionario').value = '';
+      document.getElementById('funcaoFuncionario').value = '';
+      document.getElementById('setorFuncionario').value = '';
+      document.getElementById('senhaFuncionario').value = '';
+      document.querySelector('.senha-toggle input').checked = false;
+      document.getElementById('senhaFuncionario').type = 'password';
+    }
+
+    function removerFuncionario(index) {
+      if (confirm('Deseja realmente excluir este funcionário?')) {
+        funcionarios.splice(index, 1);
+        salvarFuncionarios();
+        atualizarTabelaFuncionarios();
+        atualizarRegistrosPorFuncionario();
+      }
+    }
+
+    function atualizarTabelaFuncionarios() {
+      const tbody = document.querySelector('#tabela-funcionarios tbody');
       tbody.innerHTML = '';
-      registros.forEach(r => {
+
+      funcionarios.forEach((f, index) => {
+        const linha = `<tr>
+          <td>${f.nome}</td>
+          <td>${f.funcao}</td>
+          <td>${f.setor}</td>
+          <td class="senha-coluna">${f.senha}</td>
+          <td><button onclick="removerFuncionario(${index})">Excluir</button></td>
+        </tr>`;
+        tbody.innerHTML += linha;
+      });
+    }
+
+    function carregarRegistros() {
+      const tbody = document.querySelector('#tabela-registros tbody');
+      tbody.innerHTML = '';
+
+      const registrosOrdenados = [...registros].reverse();
+
+      registrosOrdenados.forEach(r => {
+        const icone = r.tipo === 'Entrada' ? '🔓' : '🔒';
         const linha = `<tr>
           <td>${r.nome}</td>
-          <td>${r.tipo}</td>
+          <td>${icone} ${r.tipo}</td>
           <td>${r.data}</td>
           <td>${r.hora}</td>
         </tr>`;
@@ -38,7 +181,55 @@
       });
     }
 
-    carregarTabela();
+    function atualizarRegistrosPorFuncionario() {
+      const container = document.getElementById('registrosPorFuncionario');
+      container.innerHTML = '';
+
+      funcionarios.forEach(func => {
+        const registrosFuncionario = registros.filter(r => r.nome === func.nome);
+
+        if (registrosFuncionario.length === 0) return;
+
+        const section = document.createElement('div');
+        section.className = 'registros-funcionario';
+
+        const titulo = document.createElement('h2');
+        titulo.textContent = `Registros de ${func.nome}`;
+        section.appendChild(titulo);
+
+        const tabela = document.createElement('table');
+        tabela.innerHTML = `
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Data</th>
+              <th>Hora</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${registrosFuncionario.map(r => `
+              <tr>
+                <td>${r.tipo}</td>
+                <td>${r.data}</td>
+                <td>${r.hora}</td>
+              </tr>`).join('')}
+          </tbody>
+        `;
+
+        section.appendChild(tabela);
+        container.appendChild(section);
+      });
+    }
+
+    function toggleSenhaInput() {
+      const senhaInput = document.getElementById('senhaFuncionario');
+      senhaInput.type = senhaInput.type === 'password' ? 'text' : 'password';
+    }
+
+    // Inicialização
+    carregarRegistros();
+    atualizarTabelaFuncionarios();
+    atualizarRegistrosPorFuncionario();
   </script>
 </body>
 </html>
