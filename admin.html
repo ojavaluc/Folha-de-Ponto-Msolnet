@@ -27,8 +27,22 @@
 
     .registros-funcionario h2 {
       margin-bottom: 10px;
-      font-size: 1.2em;
+      font-size: 1.5em;
       color: #0078D7;
+      border-bottom: 2px solid #0078D7;
+      padding-bottom: 5px;
+    }
+    
+    .registros-funcionario h3 {
+        margin-top: 20px;
+        color: #333;
+        font-size: 1.3em;
+    }
+    
+    .registros-funcionario h4 {
+        margin-top: 15px;
+        color: #555;
+        font-size: 1.1em;
     }
 
     .registros-funcionario table {
@@ -50,7 +64,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Registros de Ponto</h1>
+    <h1>Registros de Ponto (Geral)</h1>
 
     <table id="tabela-registros">
       <thead>
@@ -92,13 +106,15 @@
       <tbody></tbody>
     </table>
 
-    <div id="registrosPorFuncionario" class="registros-funcionario"></div>
+    <div id="registrosPorFuncionario"></div>
   </div>
 
   <script>
     const registros = JSON.parse(localStorage.getItem('registros')) || [];
     let funcionarios = JSON.parse(localStorage.getItem('funcionarios')) || [];
+    let horasExtras = JSON.parse(localStorage.getItem('horasExtras')) || [];
 
+    // --- FUNÇÕES DE GERENCIAMENTO DE FUNCIONÁRIOS ---
     function salvarFuncionarios() {
       localStorage.setItem('funcionarios', JSON.stringify(funcionarios));
     }
@@ -113,14 +129,11 @@
         alert('Por favor, preencha todos os campos.');
         return;
       }
-
       if (senha.length !== 6 || !/^\d+$/.test(senha)) {
         alert('A senha deve conter exatamente 6 dígitos numéricos.');
         return;
       }
-
-      const senhaExistente = funcionarios.find(f => f.senha === senha);
-      if (senhaExistente) {
+      if (funcionarios.find(f => f.senha === senha)) {
         alert('Essa senha já está em uso por outro funcionário.');
         return;
       }
@@ -150,7 +163,6 @@
     function atualizarTabelaFuncionarios() {
       const tbody = document.querySelector('#tabela-funcionarios tbody');
       tbody.innerHTML = '';
-
       funcionarios.forEach((f, index) => {
         const linha = `<tr>
           <td>${f.nome}</td>
@@ -163,17 +175,82 @@
       });
     }
 
-    function carregarRegistros() {
+    // --- LÓGICA DE CÁLCULO DE HORAS EXTRAS ---
+
+    function parseTimeToMinutes(timeStr) {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    }
+    
+    function formatMinutesToHours(totalMinutes) {
+        if (totalMinutes <= 0) return "0 minutos";
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        let result = '';
+        if (hours > 0) {
+            result += `${hours} hora${hours > 1 ? 's' : ''}`;
+        }
+        if (minutes > 0) {
+            if (hours > 0) result += ' e ';
+            result += `${minutes} minuto${minutes > 1 ? 's' : ''}`;
+        }
+        return result;
+    }
+    
+    function calcularEProcessarHorasExtras() {
+        const JORNADA_EM_MINUTOS = 8 * 60;
+        
+        const registrosAgrupados = {};
+        for (const r of registros) {
+            if (!registrosAgrupados[r.nome]) registrosAgrupados[r.nome] = {};
+            if (!registrosAgrupados[r.nome][r.data]) registrosAgrupados[r.nome][r.data] = [];
+            registrosAgrupados[r.nome][r.data].push(r);
+        }
+
+        for (const nome in registrosAgrupados) {
+            for (const data in registrosAgrupados[nome]) {
+                const jaCalculado = horasExtras.find(he => he.nome === nome && he.data === data);
+                if (jaCalculado) continue;
+
+                const diaDeRegistros = registrosAgrupados[nome][data];
+                
+                const chegada = diaDeRegistros.find(r => r.tipo === 'Chegada');
+                const saidaAlmoco = diaDeRegistros.find(r => r.tipo === 'Saída para Almoço');
+                const voltaAlmoco = diaDeRegistros.find(r => r.tipo === 'Volta do Almoço');
+                const fimExpediente = diaDeRegistros.find(r => r.tipo === 'Fim do Expediente');
+
+                if (chegada && saidaAlmoco && voltaAlmoco && fimExpediente) {
+                    const minChegada = parseTimeToMinutes(chegada.hora);
+                    const minSaidaAlmoco = parseTimeToMinutes(saidaAlmoco.hora);
+                    const minVoltaAlmoco = parseTimeToMinutes(voltaAlmoco.hora);
+                    const minFimExpediente = parseTimeToMinutes(fimExpediente.hora);
+                    
+                    const minutosTrabalhadosManha = minSaidaAlmoco - minChegada;
+                    const minutosTrabalhadosTarde = minFimExpediente - minVoltaAlmoco;
+                    
+                    const totalMinutosTrabalhados = minutosTrabalhadosManha + minutosTrabalhadosTarde;
+                    
+                    const minutosExtras = totalMinutosTrabalhados - JORNADA_EM_MINUTOS;
+
+                    if (minutosExtras > 0) {
+                        horasExtras.push({ nome, data, minutosExtras });
+                    }
+                }
+            }
+        }
+        localStorage.setItem('horasExtras', JSON.stringify(horasExtras));
+    }
+
+
+    // --- FUNÇÕES DE EXIBIÇÃO NA PÁGINA ---
+
+    function carregarRegistrosGeral() {
       const tbody = document.querySelector('#tabela-registros tbody');
       tbody.innerHTML = '';
-
-      const registrosOrdenados = [...registros].reverse();
-
-      registrosOrdenados.forEach(r => {
-        const icone = r.tipo === 'Entrada' ? '🔓' : '🔒';
+      [...registros].reverse().forEach(r => {
         const linha = `<tr>
           <td>${r.nome}</td>
-          <td>${icone} ${r.tipo}</td>
+          <td>${r.tipo}</td>
           <td>${r.data}</td>
           <td>${r.hora}</td>
         </tr>`;
@@ -182,41 +259,81 @@
     }
 
     function atualizarRegistrosPorFuncionario() {
+      calcularEProcessarHorasExtras();
+
       const container = document.getElementById('registrosPorFuncionario');
       container.innerHTML = '';
 
       funcionarios.forEach(func => {
-        const registrosFuncionario = registros.filter(r => r.nome === func.nome);
-
-        if (registrosFuncionario.length === 0) return;
-
         const section = document.createElement('div');
         section.className = 'registros-funcionario';
-
+        
         const titulo = document.createElement('h2');
-        titulo.textContent = `Registros de ${func.nome}`;
+        titulo.textContent = `Relatório de ${func.nome}`;
         section.appendChild(titulo);
 
-        const tabela = document.createElement('table');
-        tabela.innerHTML = `
-          <thead>
-            <tr>
-              <th>Tipo</th>
-              <th>Data</th>
-              <th>Hora</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${registrosFuncionario.map(r => `
-              <tr>
-                <td>${r.tipo}</td>
-                <td>${r.data}</td>
-                <td>${r.hora}</td>
-              </tr>`).join('')}
-          </tbody>
-        `;
+        // --- EXIBIÇÃO DE HORAS EXTRAS (LÓGICA ATUALIZADA) ---
+        const tituloHorasExtras = document.createElement('h3');
+        tituloHorasExtras.textContent = 'Resumo de Horas Extras';
+        section.appendChild(tituloHorasExtras);
 
-        section.appendChild(tabela);
+        const horasExtrasFuncionario = horasExtras.filter(he => he.nome === func.nome);
+        
+        if (horasExtrasFuncionario.length > 0) {
+            const extrasPorMes = {};
+            horasExtrasFuncionario.forEach(he => {
+                const [dia, mes, ano] = he.data.split('/');
+                const chaveMes = `${mes}/${ano}`;
+                if (!extrasPorMes[chaveMes]) extrasPorMes[chaveMes] = [];
+                extrasPorMes[chaveMes].push(he);
+            });
+            
+            for (const chaveMes in extrasPorMes) {
+                const totalMinutosMes = extrasPorMes[chaveMes].reduce((acc, he) => acc + he.minutosExtras, 0);
+                const nomeMes = new Date(chaveMes.split('/')[1], chaveMes.split('/')[0] - 1).toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+
+                const subTituloMes = document.createElement('h4');
+                subTituloMes.textContent = `${nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1)}: Total de ${formatMinutesToHours(totalMinutosMes)}`;
+                section.appendChild(subTituloMes);
+                
+                const tabelaExtras = document.createElement('table');
+                let linhasExtras = `<tr><th>Data</th><th>Horas Extras no Dia</th></tr>`;
+                extrasPorMes[chaveMes].forEach(he => {
+                    linhasExtras += `<tr><td>${he.data}</td><td>${formatMinutesToHours(he.minutosExtras)}</td></tr>`;
+                });
+                tabelaExtras.innerHTML = `<thead>${linhasExtras}</thead>`;
+                section.appendChild(tabelaExtras);
+            }
+        } else {
+            // Se não houver horas extras, exibe a mensagem
+            const p = document.createElement('p');
+            p.textContent = 'Nenhuma hora extra registrada para este funcionário.';
+            section.appendChild(p);
+        }
+
+        // --- EXIBIÇÃO DO HISTÓRICO DE PONTOS ---
+        const registrosFuncionario = registros.filter(r => r.nome === func.nome);
+        if (registrosFuncionario.length > 0) {
+            const tituloRegistros = document.createElement('h3');
+            tituloRegistros.textContent = 'Histórico de Pontos Batidos';
+            section.appendChild(tituloRegistros);
+            
+            const tabelaPontos = document.createElement('table');
+            tabelaPontos.innerHTML = `
+              <thead>
+                <tr><th>Tipo</th><th>Data</th><th>Hora</th></tr>
+              </thead>
+              <tbody>
+                ${[...registrosFuncionario].reverse().map(r => `
+                  <tr>
+                    <td>${r.tipo}</td>
+                    <td>${r.data}</td>
+                    <td>${r.hora}</td>
+                  </tr>`).join('')}
+              </tbody>`;
+            section.appendChild(tabelaPontos);
+        }
+        
         container.appendChild(section);
       });
     }
@@ -226,8 +343,8 @@
       senhaInput.type = senhaInput.type === 'password' ? 'text' : 'password';
     }
 
-    // Inicialização
-    carregarRegistros();
+    // --- INICIALIZAÇÃO DA PÁGINA ---
+    carregarRegistrosGeral();
     atualizarTabelaFuncionarios();
     atualizarRegistrosPorFuncionario();
   </script>
